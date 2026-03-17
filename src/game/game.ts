@@ -139,36 +139,39 @@ export class Game {
     initBackground();
 
     // Create persistent UI
+    const mob = this.isMobile;
     this.titlePlayButton = createButton(
-      GAME_WIDTH / 2 - 80,
-      GAME_HEIGHT * 0.50,
-      160,
-      48,
+      GAME_WIDTH / 2 - (mob ? 140 : 80),
+      GAME_HEIGHT * (mob ? 0.45 : 0.50),
+      mob ? 280 : 160,
+      mob ? 80 : 48,
       'PLAY',
       () => this.goToLevelSelect(),
       COLORS.cyan,
-      20
+      mob ? 32 : 20
     );
 
     this.titleHowToPlayButton = createButton(
-      GAME_WIDTH / 2 - 80,
-      GAME_HEIGHT * 0.60,
-      160,
-      38,
+      GAME_WIDTH / 2 - (mob ? 140 : 80),
+      GAME_HEIGHT * (mob ? 0.60 : 0.60),
+      mob ? 280 : 160,
+      mob ? 64 : 38,
       'How to Play',
       () => this.goToTutorial(),
       COLORS.violet,
-      16
+      mob ? 26 : 16
     );
 
     this.levelSelectButtons = createLevelSelectButtons();
     this.levelSelectBackButton = createButton(
       20,
-      GAME_HEIGHT - 60,
-      100,
-      36,
+      GAME_HEIGHT - (mob ? 80 : 60),
+      mob ? 160 : 100,
+      mob ? 56 : 36,
       'Back',
       () => this.goToTitle(),
+      undefined,
+      mob ? 22 : undefined
     );
 
     this.isMobile = isMobileDevice();
@@ -304,6 +307,25 @@ export class Game {
       touchStartX = pos.x;
       touchStartY = pos.y;
       touchStartTime = performance.now();
+
+      // Check if touching a slider in the panel — start drag immediately
+      if (this.screen === 'playing' && this.mobile.showPanel && this.mobile.selectedWellIdx >= 0) {
+        const hit = hitTestPanel(pos.x, pos.y, this.mobile, PANEL_WIDTH);
+        if (hit.area === 'radius-slider') {
+          this.mobile.draggingSlider = 'radius';
+          const well = this.wells[this.mobile.selectedWellIdx];
+          const val = getSliderValue(pos.x, this.mobile, PANEL_WIDTH);
+          well.radius = Math.round(40 + val * 120);
+          return;
+        }
+        if (hit.area === 'strength-slider') {
+          this.mobile.draggingSlider = 'strength';
+          const well = this.wells[this.mobile.selectedWellIdx];
+          const val = getSliderValue(pos.x, this.mobile, PANEL_WIDTH);
+          well.strength = Math.round((0.5 + val * 2.5) * 10) / 10;
+          return;
+        }
+      }
 
       // Start long-press timer for dragging wells
       if (this.screen === 'playing' && !this.particle.launched) {
@@ -771,32 +793,36 @@ export class Game {
   private buildTutorialButtons(): void {
     const isFirst = this.tutorialPage === 0;
     const isLast = this.tutorialPage === TUTORIAL_PAGE_COUNT - 1;
+    const m = this.isMobile;
+    const bw = m ? 160 : 80;
+    const bh = m ? 56 : 34;
+    const fs = m ? 22 : undefined;
 
     this.tutorialButtons = [];
 
-    // Back button (always)
     this.tutorialButtons.push(
-      createButton(20, GAME_HEIGHT - 55, 80, 34, 'Back', () => {
+      createButton(20, GAME_HEIGHT - (m ? 75 : 55), bw, bh, '\u2190 Back', () => {
         if (isFirst) {
           this.goToTitle();
         } else {
           this.tutorialPage--;
           this.buildTutorialButtons();
         }
-      })
+      }, undefined, fs)
     );
 
-    // Next / Play button
     if (isLast) {
       this.tutorialButtons.push(
-        createButton(GAME_WIDTH - 120, GAME_HEIGHT - 55, 100, 34, 'Play \u2192', () => this.goToLevelSelect(), COLORS.green)
+        createButton(GAME_WIDTH - bw - 20, GAME_HEIGHT - (m ? 75 : 55), bw, bh,
+          'Play \u2192', () => this.goToLevelSelect(), COLORS.green, fs)
       );
     } else {
       this.tutorialButtons.push(
-        createButton(GAME_WIDTH - 100, GAME_HEIGHT - 55, 80, 34, 'Next \u2192', () => {
+        createButton(GAME_WIDTH - bw - 20, GAME_HEIGHT - (m ? 75 : 55), bw, bh,
+          'Next \u2192', () => {
           this.tutorialPage++;
           this.buildTutorialButtons();
-        }, COLORS.cyan)
+        }, COLORS.cyan, fs)
       );
     }
   }
