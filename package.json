@@ -1,0 +1,17 @@
+{
+  "name": "graviton",
+  "version": "1.0.0",
+  "description": "Gravity-based puzzle game — place gravity wells to guide particles to the target",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "author": "Luca Cozza",
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.7.3",
+    "vite": "^6.3.5"
+  }
+}
