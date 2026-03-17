@@ -6,19 +6,24 @@
 
 html, body {
   width: 100%;
-  height: 100%;
+  height: 100vh;
+  height: 100dvh;
   overflow: hidden;
   background: #0A0A14;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   -webkit-font-smoothing: antialiased;
   user-select: none;
   -webkit-user-select: none;
+  position: fixed;
+  top: 0;
+  left: 0;
 }
 
 canvas#game {
   display: block;
   width: 100%;
-  height: 100%;
+  height: 100vh;
+  height: 100dvh;
   cursor: crosshair;
   touch-action: none;
   -webkit-touch-callout: none;
