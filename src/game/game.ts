@@ -50,6 +50,22 @@ import {
 import { createButton, isPointInButton } from '../ui/buttons';
 import { renderTutorial, TUTORIAL_PAGE_COUNT } from '../ui/tutorial';
 import {
+  isMobileDevice,
+  needsRotation,
+  renderRotationScreen,
+  renderMobileToolbar,
+  renderWellPanel,
+  renderMobileWellSelection,
+  hitTestToolbar,
+  hitTestPanel,
+  isInToolbar,
+  isInPanel,
+  getSliderValue,
+  createMobileState,
+  MobileState,
+  PANEL_WIDTH,
+} from '../ui/mobile';
+import {
   playLaunch,
   playPlace,
   playToggle,
@@ -104,6 +120,10 @@ export class Game {
   private tutorialPage: number = 0;
   private tutorialButtons: Button[] = [];
 
+  // Mobile
+  private isMobile: boolean = false;
+  private mobile: MobileState = createMobileState();
+
   // Mouse
   private mouseX: number = 0;
   private mouseY: number = 0;
@@ -150,9 +170,13 @@ export class Game {
       () => this.goToTitle(),
     );
 
+    this.isMobile = isMobileDevice();
     this.setupInput();
     this.resize();
     window.addEventListener('resize', () => this.resize());
+    if (this.isMobile) {
+      this.setupTouchInput();
+    }
   }
 
   private resize(): void {
@@ -259,6 +283,243 @@ export class Game {
         }
       }
     });
+  }
+
+  private setupTouchInput(): void {
+    let lastTapTime = 0;
+    let lastTapX = 0;
+    let lastTapY = 0;
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let touchStartTime = 0;
+    let longPressTimer = 0;
+    let isDragging = false;
+
+    this.canvas.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      if (e.touches.length !== 1) return;
+      const t = e.touches[0];
+      const pos = this.screenToGame(t.clientX, t.clientY);
+      touchStartX = pos.x;
+      touchStartY = pos.y;
+      touchStartTime = performance.now();
+
+      // Start long-press timer for dragging wells
+      if (this.screen === 'playing' && !this.particle.launched) {
+        const wellIdx = this.findWellAt(pos.x, pos.y);
+        if (wellIdx >= 0) {
+          longPressTimer = window.setTimeout(() => {
+            isDragging = true;
+            this.mobile.draggingWellIdx = wellIdx;
+            if (navigator.vibrate) navigator.vibrate(15);
+          }, 400);
+        }
+      }
+    }, { passive: false });
+
+    this.canvas.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      if (e.touches.length !== 1) return;
+      const t = e.touches[0];
+      const pos = this.screenToGame(t.clientX, t.clientY);
+
+      // Cancel long-press if moved too much
+      const dx = pos.x - touchStartX;
+      const dy = pos.y - touchStartY;
+      if (Math.sqrt(dx * dx + dy * dy) > 8 && !isDragging) {
+        clearTimeout(longPressTimer);
+      }
+
+      // Handle slider dragging
+      if (this.mobile.draggingSlider && this.mobile.selectedWellIdx >= 0) {
+        const well = this.wells[this.mobile.selectedWellIdx];
+        const val = getSliderValue(pos.x, this.mobile, PANEL_WIDTH);
+        if (this.mobile.draggingSlider === 'radius') {
+          well.radius = Math.round(40 + val * 120);
+        } else {
+          well.strength = Math.round((0.5 + val * 2.5) * 10) / 10;
+        }
+        return;
+      }
+
+      // Handle well dragging
+      if (isDragging && this.mobile.draggingWellIdx >= 0) {
+        const well = this.wells[this.mobile.draggingWellIdx];
+        well.position.x = pos.x;
+        well.position.y = Math.max(50, pos.y - 16); // Offset above finger
+      }
+    }, { passive: false });
+
+    this.canvas.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      clearTimeout(longPressTimer);
+
+      const pos = { x: touchStartX, y: touchStartY };
+      if (e.changedTouches.length > 0) {
+        const t = e.changedTouches[0];
+        const endPos = this.screenToGame(t.clientX, t.clientY);
+        pos.x = endPos.x;
+        pos.y = endPos.y;
+      }
+
+      const duration = performance.now() - touchStartTime;
+      const moved = Math.sqrt(
+        (pos.x - touchStartX) ** 2 + (pos.y - touchStartY) ** 2
+      );
+
+      // End slider drag
+      if (this.mobile.draggingSlider) {
+        this.mobile.draggingSlider = null;
+        return;
+      }
+
+      // End well drag
+      if (isDragging) {
+        isDragging = false;
+        this.mobile.draggingWellIdx = -1;
+        this.mobile.selectedWellIdx = this.findWellAt(pos.x, pos.y);
+        this.mobile.showPanel = this.mobile.selectedWellIdx >= 0;
+        return;
+      }
+
+      // Detect tap (short duration, small movement)
+      if (duration < 300 && moved < 15) {
+        const now = performance.now();
+        const timeSinceLastTap = now - lastTapTime;
+        const distFromLastTap = Math.sqrt(
+          (touchStartX - lastTapX) ** 2 + (touchStartY - lastTapY) ** 2
+        );
+
+        // Double-tap detection: toggle well type
+        if (timeSinceLastTap < 350 && distFromLastTap < 30) {
+          lastTapTime = 0;
+          this.handleMobileDoubleTap(touchStartX, touchStartY);
+          return;
+        }
+
+        lastTapTime = now;
+        lastTapX = touchStartX;
+        lastTapY = touchStartY;
+
+        this.handleMobileTap(touchStartX, touchStartY);
+      }
+    }, { passive: false });
+
+    this.canvas.addEventListener('touchcancel', (e) => {
+      e.preventDefault();
+      clearTimeout(longPressTimer);
+      isDragging = false;
+      this.mobile.draggingWellIdx = -1;
+      this.mobile.draggingSlider = null;
+    }, { passive: false });
+  }
+
+  private findWellAt(x: number, y: number): number {
+    for (let i = 0; i < this.wells.length; i++) {
+      const dist = distanceBetween({ x, y }, this.wells[i].position);
+      if (dist < Math.max(30, this.wells[i].radius * 0.3)) return i;
+    }
+    return -1;
+  }
+
+  private handleMobileTap(x: number, y: number): void {
+    // Check toolbar buttons first
+    if (this.screen === 'playing') {
+      const btnId = hitTestToolbar(x, y, this.mobile);
+      if (btnId) {
+        playClick();
+        if (btnId === 'launch') this.handleSpace();
+        else if (btnId === 'reset') this.resetLevel();
+        else if (btnId === 'hint') this.toggleHint();
+        else if (btnId === 'apply') this.applyHint();
+        else if (btnId === 'delete') {
+          this.mobile.deleteMode = !this.mobile.deleteMode;
+        }
+        else if (btnId === 'place') {
+          // Could toggle default well type in future
+        }
+        return;
+      }
+
+      // Check panel if visible
+      if (this.mobile.showPanel && this.mobile.selectedWellIdx >= 0) {
+        const hit = hitTestPanel(x, y, this.mobile, PANEL_WIDTH);
+        if (hit.area === 'close') {
+          this.mobile.selectedWellIdx = -1;
+          this.mobile.showPanel = false;
+          return;
+        }
+        if (hit.area === 'radius-slider') {
+          this.mobile.draggingSlider = 'radius';
+          const val = getSliderValue(x, this.mobile, PANEL_WIDTH);
+          this.wells[this.mobile.selectedWellIdx].radius = Math.round(40 + val * 120);
+          return;
+        }
+        if (hit.area === 'strength-slider') {
+          this.mobile.draggingSlider = 'strength';
+          const val = getSliderValue(x, this.mobile, PANEL_WIDTH);
+          this.wells[this.mobile.selectedWellIdx].strength = Math.round((0.5 + val * 2.5) * 10) / 10;
+          return;
+        }
+        if (hit.area === 'toggle') {
+          const well = this.wells[this.mobile.selectedWellIdx];
+          well.type = well.type === 'attractor' ? 'repeller' : 'attractor';
+          playToggle();
+          return;
+        }
+        if (hit.area === 'delete') {
+          this.wells.splice(this.mobile.selectedWellIdx, 1);
+          this.mobile.selectedWellIdx = -1;
+          this.mobile.showPanel = false;
+          playRemove();
+          return;
+        }
+        if (isInPanel(x, y, this.mobile)) return; // Consumed by panel
+      }
+
+      // Skip toolbar/panel area
+      if (isInToolbar(y)) return;
+    }
+
+    // Handle tap on game area (all screens)
+    this.handleClick(x, y);
+
+    // Mobile-specific: playing screen tap logic
+    if (this.screen === 'playing' && !this.particle.launched) {
+      const wellIdx = this.findWellAt(x, y);
+
+      if (wellIdx >= 0) {
+        if (this.mobile.deleteMode) {
+          // Delete mode: tap to delete
+          this.wells.splice(wellIdx, 1);
+          this.mobile.deleteMode = false;
+          this.mobile.selectedWellIdx = -1;
+          this.mobile.showPanel = false;
+          playRemove();
+        } else {
+          // Select well
+          this.mobile.selectedWellIdx = wellIdx;
+          this.mobile.showPanel = true;
+          if (navigator.vibrate) navigator.vibrate(10);
+        }
+      } else if (y > 50 && !isInToolbar(y)) {
+        // Deselect if tapping empty space (well placement handled by handleClick)
+        this.mobile.selectedWellIdx = -1;
+        this.mobile.showPanel = false;
+        this.mobile.deleteMode = false;
+      }
+    }
+  }
+
+  private handleMobileDoubleTap(x: number, y: number): void {
+    if (this.screen !== 'playing' || this.particle.launched) return;
+    const wellIdx = this.findWellAt(x, y);
+    if (wellIdx >= 0) {
+      this.wells[wellIdx].type =
+        this.wells[wellIdx].type === 'attractor' ? 'repeller' : 'attractor';
+      playToggle();
+      if (navigator.vibrate) navigator.vibrate([15, 30, 15]);
+    }
   }
 
   private updateHovers(): void {
@@ -749,6 +1010,13 @@ export class Game {
     ctx.save();
     ctx.scale(this.scaleX, this.scaleY);
 
+    // Show rotation screen on mobile portrait
+    if (this.isMobile && needsRotation()) {
+      renderRotationScreen(ctx, this.time);
+      ctx.restore();
+      return;
+    }
+
     switch (this.screen) {
       case 'title':
         renderTitleScreen(ctx, this.time, this.titlePlayButton, this.titleHowToPlayButton);
@@ -762,38 +1030,61 @@ export class Game {
         renderLevelSelect(ctx, this.time, this.saveData, this.levelSelectButtons, this.levelSelectBackButton);
         break;
 
-      case 'playing':
+      case 'playing': {
+        const selIdx = this.isMobile ? this.mobile.selectedWellIdx : this.hoveredWellIdx;
         renderPlayingState(
           ctx,
           this.currentLevel,
           this.wells,
           this.particle,
           this.time,
-          this.hoveredWellIdx,
+          selIdx,
           this.hintActive ? this.currentLevel.solution : undefined,
           this.hintActive ? this.hintTrajectory : undefined,
           this.hintActive ? this.hintReachesTarget : undefined
         );
-        renderHUD(
-          ctx,
-          this.currentLevel,
-          this.wells.length,
-          this.particle.launched,
-          this.time,
-          this.hudButtons,
-          this.hoveredWellIdx >= 0 ? this.wells[this.hoveredWellIdx] : undefined
-        );
+
+        // Mobile: selected well highlight + panel + toolbar
+        if (this.isMobile) {
+          if (this.mobile.selectedWellIdx >= 0 && this.mobile.selectedWellIdx < this.wells.length) {
+            renderMobileWellSelection(ctx, this.wells[this.mobile.selectedWellIdx], this.time);
+          }
+          if (this.mobile.showPanel && this.mobile.selectedWellIdx >= 0 && this.mobile.selectedWellIdx < this.wells.length) {
+            renderWellPanel(ctx, this.wells[this.mobile.selectedWellIdx], this.mobile, this.time);
+          }
+          const hasHint = !!(this.currentLevel.solution && this.currentLevel.solution.length > 0);
+          renderMobileToolbar(
+            ctx, this.mobile,
+            this.wells.length, this.currentLevel.maxWells,
+            this.particle.launched, hasHint, this.hintActive, this.time
+          );
+        } else {
+          renderHUD(
+            ctx,
+            this.currentLevel,
+            this.wells.length,
+            this.particle.launched,
+            this.time,
+            this.hudButtons,
+            this.hoveredWellIdx >= 0 ? this.wells[this.hoveredWellIdx] : undefined
+          );
+        }
         break;
+      }
 
       case 'victory':
         renderPlayingState(ctx, this.currentLevel, this.wells, this.particle, this.time, -1);
-        renderHUD(ctx, this.currentLevel, this.wells.length, this.particle.launched, this.time, []);
+        if (!this.isMobile) {
+          renderHUD(ctx, this.currentLevel, this.wells.length, this.particle.launched, this.time, []);
+        }
         renderVictoryOverlay(ctx, this.resultStars, this.time, this.overlayProgress, this.victoryButtons);
         break;
 
       case 'fail':
         renderPlayingState(ctx, this.currentLevel, this.wells, this.particle, this.time, -1);
-        renderHUD(ctx, this.currentLevel, this.wells.length, this.particle.launched, this.time, []);
+        if (!this.isMobile) {
+          renderHUD(ctx, this.currentLevel, this.wells.length, this.particle.launched, this.time, []);
+        }
         renderFailOverlay(ctx, this.time, this.overlayProgress, this.failButtons);
         break;
     }
