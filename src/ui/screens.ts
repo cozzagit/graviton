@@ -17,11 +17,12 @@ import { LEVELS } from '../game/levels';
 export function renderTitleScreen(
   ctx: CanvasRenderingContext2D,
   time: number,
-  playButton: Button
+  playButton: Button,
+  howToPlayButton?: Button
 ): void {
   renderTitleBackground(ctx, time);
 
-  const titleY = GAME_HEIGHT * 0.32;
+  const titleY = GAME_HEIGHT * 0.28;
   const bounce = Math.sin(time * 1.2) * 4;
 
   ctx.shadowColor = COLORS.cyan;
@@ -42,6 +43,9 @@ export function renderTitleScreen(
   );
 
   renderButton(ctx, playButton, time);
+  if (howToPlayButton) {
+    renderButton(ctx, howToPlayButton, time);
+  }
 
   ctx.fillStyle = `rgba(255, 255, 255, 0.15)`;
   ctx.font = '12px system-ui';

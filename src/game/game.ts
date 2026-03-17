@@ -48,6 +48,7 @@ import {
   LevelSelectButton,
 } from '../ui/screens';
 import { createButton, isPointInButton } from '../ui/buttons';
+import { renderTutorial, TUTORIAL_PAGE_COUNT } from '../ui/tutorial';
 import {
   playLaunch,
   playPlace,
@@ -84,6 +85,7 @@ export class Game {
 
   // UI elements
   private titlePlayButton: Button;
+  private titleHowToPlayButton: Button;
   private levelSelectButtons: LevelSelectButton[] = [];
   private levelSelectBackButton: Button;
   private hudButtons: Button[] = [];
@@ -97,6 +99,10 @@ export class Game {
 
   // Well interaction
   private hoveredWellIdx: number = -1;
+
+  // Tutorial
+  private tutorialPage: number = 0;
+  private tutorialButtons: Button[] = [];
 
   // Mouse
   private mouseX: number = 0;
@@ -114,13 +120,24 @@ export class Game {
     // Create persistent UI
     this.titlePlayButton = createButton(
       GAME_WIDTH / 2 - 80,
-      GAME_HEIGHT * 0.55,
+      GAME_HEIGHT * 0.50,
       160,
       48,
       'PLAY',
       () => this.goToLevelSelect(),
       COLORS.cyan,
       20
+    );
+
+    this.titleHowToPlayButton = createButton(
+      GAME_WIDTH / 2 - 80,
+      GAME_HEIGHT * 0.60,
+      160,
+      38,
+      'How to Play',
+      () => this.goToTutorial(),
+      COLORS.violet,
+      16
     );
 
     this.levelSelectButtons = createLevelSelectButtons();
@@ -223,7 +240,7 @@ export class Game {
       if (e.code === 'Escape') {
         if (this.screen === 'playing' || this.screen === 'victory' || this.screen === 'fail') {
           this.goToLevelSelect();
-        } else if (this.screen === 'levelSelect') {
+        } else if (this.screen === 'levelSelect' || this.screen === 'tutorial') {
           this.goToTitle();
         }
       }
@@ -250,6 +267,13 @@ export class Game {
 
     if (this.screen === 'title') {
       this.titlePlayButton.hovered = isPointInButton(this.titlePlayButton, mx, my);
+      this.titleHowToPlayButton.hovered = isPointInButton(this.titleHowToPlayButton, mx, my);
+    }
+
+    if (this.screen === 'tutorial') {
+      for (const btn of this.tutorialButtons) {
+        btn.hovered = isPointInButton(btn, mx, my);
+      }
     }
 
     if (this.screen === 'levelSelect') {
@@ -299,6 +323,21 @@ export class Game {
         playClick();
         this.titlePlayButton.onClick();
         return;
+      }
+      if (isPointInButton(this.titleHowToPlayButton, x, y)) {
+        playClick();
+        this.titleHowToPlayButton.onClick();
+        return;
+      }
+    }
+
+    if (this.screen === 'tutorial') {
+      for (const btn of this.tutorialButtons) {
+        if (isPointInButton(btn, x, y)) {
+          playClick();
+          btn.onClick();
+          return;
+        }
       }
     }
 
@@ -453,6 +492,45 @@ export class Game {
 
   private goToTitle(): void {
     this.screen = 'title';
+  }
+
+  private goToTutorial(): void {
+    this.tutorialPage = 0;
+    this.screen = 'tutorial';
+    this.buildTutorialButtons();
+  }
+
+  private buildTutorialButtons(): void {
+    const isFirst = this.tutorialPage === 0;
+    const isLast = this.tutorialPage === TUTORIAL_PAGE_COUNT - 1;
+
+    this.tutorialButtons = [];
+
+    // Back button (always)
+    this.tutorialButtons.push(
+      createButton(20, GAME_HEIGHT - 55, 80, 34, 'Back', () => {
+        if (isFirst) {
+          this.goToTitle();
+        } else {
+          this.tutorialPage--;
+          this.buildTutorialButtons();
+        }
+      })
+    );
+
+    // Next / Play button
+    if (isLast) {
+      this.tutorialButtons.push(
+        createButton(GAME_WIDTH - 120, GAME_HEIGHT - 55, 100, 34, 'Play \u2192', () => this.goToLevelSelect(), COLORS.green)
+      );
+    } else {
+      this.tutorialButtons.push(
+        createButton(GAME_WIDTH - 100, GAME_HEIGHT - 55, 80, 34, 'Next \u2192', () => {
+          this.tutorialPage++;
+          this.buildTutorialButtons();
+        }, COLORS.cyan)
+      );
+    }
   }
 
   private goToLevelSelect(): void {
@@ -673,7 +751,11 @@ export class Game {
 
     switch (this.screen) {
       case 'title':
-        renderTitleScreen(ctx, this.time, this.titlePlayButton);
+        renderTitleScreen(ctx, this.time, this.titlePlayButton, this.titleHowToPlayButton);
+        break;
+
+      case 'tutorial':
+        renderTutorial(ctx, this.time, this.tutorialPage, this.tutorialButtons);
         break;
 
       case 'levelSelect':

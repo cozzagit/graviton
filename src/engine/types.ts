@@ -72,7 +72,7 @@ export interface Decoration {
   alpha: number;
 }
 
-export type GameScreen = 'title' | 'levelSelect' | 'playing' | 'victory' | 'fail';
+export type GameScreen = 'title' | 'tutorial' | 'levelSelect' | 'playing' | 'victory' | 'fail';
 
 export interface LevelProgress {
   unlocked: boolean;
