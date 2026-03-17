@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite';
 
 export default defineConfig({
-  base: '/graviton/',
+  base: process.env.GITHUB_PAGES ? '/graviton/' : '/',
   root: '.',
   build: {
     outDir: 'dist',
