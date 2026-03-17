@@ -475,11 +475,17 @@ export class Game {
           playRemove();
           return;
         }
+        if (hit.area === 'done') {
+          this.mobile.selectedWellIdx = -1;
+          this.mobile.showPanel = false;
+          playClick();
+          return;
+        }
         if (isInPanel(x, y, this.mobile)) return; // Consumed by panel
       }
 
       // Skip toolbar/panel area
-      if (isInToolbar(y)) return;
+      if (isInToolbar(y) || isInPanel(x, y, this.mobile)) return;
     }
 
     // Handle tap on game area (all screens)
