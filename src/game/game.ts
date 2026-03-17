@@ -54,6 +54,7 @@ import {
   needsRotation,
   renderRotationScreen,
   renderMobileToolbar,
+  renderMobileHUD,
   renderWellPanel,
   renderMobileWellSelection,
   hitTestToolbar,
@@ -1044,8 +1045,16 @@ export class Game {
           this.hintActive ? this.hintReachesTarget : undefined
         );
 
-        // Mobile: selected well highlight + panel + toolbar
+        // Mobile: HUD + selected well highlight + panel + toolbar
         if (this.isMobile) {
+          renderMobileHUD(
+            ctx,
+            this.currentLevel.id,
+            this.currentLevel.name,
+            this.wells.length,
+            this.currentLevel.maxWells,
+            this.currentLevel.par
+          );
           if (this.mobile.selectedWellIdx >= 0 && this.mobile.selectedWellIdx < this.wells.length) {
             renderMobileWellSelection(ctx, this.wells[this.mobile.selectedWellIdx], this.time);
           }
