@@ -1056,7 +1056,7 @@ export class Game {
         break;
 
       case 'tutorial':
-        renderTutorial(ctx, this.time, this.tutorialPage, this.tutorialButtons);
+        renderTutorial(ctx, this.time, this.tutorialPage, this.tutorialButtons, this.isMobile);
         break;
 
       case 'levelSelect':

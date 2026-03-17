@@ -7,61 +7,62 @@ import {
 import { renderBackground } from '../render/background';
 import { renderButton } from './buttons';
 
+// Mobile scale factor for all sizes
+let S = 1;
+
 const PAGES = [
   // Page 0: Overview
   (ctx: CanvasRenderingContext2D, time: number) => {
     drawTitle(ctx, 'HOW TO PLAY');
-    drawSubtitle(ctx, 'Guide the particle to the target using gravity wells');
+    drawSubtitle(ctx, 'Guide the particle to the target');
 
-    // Draw particle → target illustration
     const cx = GAME_WIDTH / 2;
-    const y = 320;
+    const y = 280 * S + 40;
 
-    // Start point
-    drawGlowDot(ctx, cx - 250, y, 6, COLORS.cyan, time);
-    ctx.fillStyle = 'rgba(255,255,255,0.5)';
-    ctx.font = '12px system-ui';
+    // Start → Well → Target illustration
+    const spread = 200 * S;
+
+    drawGlowDot(ctx, cx - spread, y, 8 * S, COLORS.cyan, time);
+    ctx.fillStyle = 'rgba(255,255,255,0.6)';
+    ctx.font = `${14 * S}px system-ui`;
     ctx.textAlign = 'center';
-    ctx.fillText('START', cx - 250, y + 25);
+    ctx.fillText('START', cx - spread, y + 30 * S);
 
-    // Dotted path curving through a well
+    // Curved path
     ctx.save();
-    ctx.setLineDash([4, 6]);
+    ctx.setLineDash([6, 8]);
     ctx.strokeStyle = `rgba(${COLORS.cyanRgb}, 0.4)`;
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.moveTo(cx - 220, y);
-    ctx.quadraticCurveTo(cx, y - 80, cx + 220, y);
+    ctx.moveTo(cx - spread + 30, y);
+    ctx.quadraticCurveTo(cx, y - 70 * S, cx + spread - 30, y);
     ctx.stroke();
     ctx.setLineDash([]);
     ctx.restore();
 
-    // Well in the middle
-    drawWellIcon(ctx, cx, y - 50, 'attractor', time);
-    ctx.fillStyle = 'rgba(255,255,255,0.4)';
-    ctx.font = '11px system-ui';
-    ctx.textAlign = 'center';
-    ctx.fillText('GRAVITY WELL', cx, y - 90);
-
-    // Target
-    drawTargetIcon(ctx, cx + 250, y, time);
+    drawWellIcon(ctx, cx, y - 45 * S, 'attractor', time);
     ctx.fillStyle = 'rgba(255,255,255,0.5)';
-    ctx.font = '12px system-ui';
-    ctx.fillText('TARGET', cx + 250, y + 25);
+    ctx.font = `${13 * S}px system-ui`;
+    ctx.fillText('GRAVITY WELL', cx, y - 80 * S);
+
+    drawTargetIcon(ctx, cx + spread, y, time);
+    ctx.fillStyle = 'rgba(255,255,255,0.6)';
+    ctx.font = `${14 * S}px system-ui`;
+    ctx.fillText('TARGET', cx + spread, y + 30 * S);
 
     // Steps
-    const stepsY = 430;
+    const stepsY = y + 70 * S;
     const steps = [
       '1. Place gravity wells on the field',
-      '2. Adjust their type, radius and strength',
-      '3. Press SPACE to launch the particle',
-      '4. The particle curves toward attractors and away from repellers',
+      '2. Adjust type, radius and strength',
+      '3. Press LAUNCH to fire the particle',
+      '4. Particle curves toward attractors, away from repellers',
     ];
-    ctx.font = '14px system-ui';
     ctx.textAlign = 'center';
     for (let i = 0; i < steps.length; i++) {
-      ctx.fillStyle = `rgba(${COLORS.cyanRgb}, ${0.7 - i * 0.05})`;
-      ctx.fillText(steps[i], cx, stepsY + i * 28);
+      ctx.fillStyle = `rgba(${COLORS.cyanRgb}, ${0.75 - i * 0.05})`;
+      ctx.font = `${16 * S}px system-ui`;
+      ctx.fillText(steps[i], cx, stepsY + i * 32 * S);
     }
   },
 
@@ -70,86 +71,80 @@ const PAGES = [
     drawTitle(ctx, 'GRAVITY WELLS');
 
     const cx = GAME_WIDTH / 2;
+    const wellY = 240 + 30 * S;
 
     // --- ATTRACTOR ---
-    const ax = cx - 220;
-    const ay = 280;
-
-    drawWellIcon(ctx, ax, ay, 'attractor', time);
+    const ax = cx - 200 * S;
+    drawWellIcon(ctx, ax, wellY, 'attractor', time);
 
     // Radius ring
     ctx.save();
-    ctx.setLineDash([4, 8]);
+    ctx.setLineDash([6, 10]);
     ctx.beginPath();
-    ctx.arc(ax, ay, 70, 0, Math.PI * 2);
-    ctx.strokeStyle = `rgba(${COLORS.cyanRgb}, 0.2)`;
-    ctx.lineWidth = 1;
+    ctx.arc(ax, wellY, 60 * S, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(${COLORS.cyanRgb}, 0.25)`;
+    ctx.lineWidth = 2;
     ctx.stroke();
     ctx.setLineDash([]);
     ctx.restore();
 
-    // Arrows pointing IN
+    // Inward arrows
     for (let i = 0; i < 4; i++) {
       const angle = (Math.PI / 2) * i + Math.PI / 4;
-      drawArrow(ctx, ax + Math.cos(angle) * 55, ay + Math.sin(angle) * 55,
-        ax + Math.cos(angle) * 30, ay + Math.sin(angle) * 30,
-        `rgba(${COLORS.cyanRgb}, 0.5)`);
+      const r1 = 45 * S, r2 = 25 * S;
+      drawArrow(ctx, ax + Math.cos(angle) * r1, wellY + Math.sin(angle) * r1,
+        ax + Math.cos(angle) * r2, wellY + Math.sin(angle) * r2,
+        `rgba(${COLORS.cyanRgb}, 0.6)`);
     }
 
     ctx.fillStyle = COLORS.cyan;
-    ctx.font = 'bold 16px system-ui';
+    ctx.font = `bold ${20 * S}px system-ui`;
     ctx.textAlign = 'center';
-    ctx.fillText('ATTRACTOR', ax, ay - 90);
-    ctx.fillStyle = 'rgba(255,255,255,0.5)';
-    ctx.font = '13px system-ui';
-    ctx.fillText('Pulls particle toward it', ax, ay - 70);
-    ctx.fillText('Left-click to place', ax, ay + 95);
+    ctx.fillText('ATTRACTOR', ax, wellY - 80 * S);
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    ctx.font = `${15 * S}px system-ui`;
+    ctx.fillText('Pulls particle in', ax, wellY - 58 * S);
 
     // --- REPELLER ---
-    const rx = cx + 220;
-    const ry = 280;
-
-    drawWellIcon(ctx, rx, ry, 'repeller', time);
+    const rx = cx + 200 * S;
+    drawWellIcon(ctx, rx, wellY, 'repeller', time);
 
     ctx.save();
-    ctx.setLineDash([4, 8]);
+    ctx.setLineDash([6, 10]);
     ctx.beginPath();
-    ctx.arc(rx, ry, 70, 0, Math.PI * 2);
-    ctx.strokeStyle = `rgba(${COLORS.violetRgb}, 0.2)`;
-    ctx.lineWidth = 1;
+    ctx.arc(rx, wellY, 60 * S, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(${COLORS.violetRgb}, 0.25)`;
+    ctx.lineWidth = 2;
     ctx.stroke();
     ctx.setLineDash([]);
     ctx.restore();
 
-    // Arrows pointing OUT
+    // Outward arrows
     for (let i = 0; i < 4; i++) {
       const angle = (Math.PI / 2) * i + Math.PI / 4;
-      drawArrow(ctx, rx + Math.cos(angle) * 30, ry + Math.sin(angle) * 30,
-        rx + Math.cos(angle) * 55, ry + Math.sin(angle) * 55,
-        `rgba(${COLORS.violetRgb}, 0.5)`);
+      const r1 = 25 * S, r2 = 45 * S;
+      drawArrow(ctx, rx + Math.cos(angle) * r1, wellY + Math.sin(angle) * r1,
+        rx + Math.cos(angle) * r2, wellY + Math.sin(angle) * r2,
+        `rgba(${COLORS.violetRgb}, 0.6)`);
     }
 
     ctx.fillStyle = COLORS.violet;
-    ctx.font = 'bold 16px system-ui';
+    ctx.font = `bold ${20 * S}px system-ui`;
     ctx.textAlign = 'center';
-    ctx.fillText('REPELLER', rx, ry - 90);
-    ctx.fillStyle = 'rgba(255,255,255,0.5)';
-    ctx.font = '13px system-ui';
-    ctx.fillText('Pushes particle away', rx, ry - 70);
-    ctx.fillText('Right-click to toggle type', rx, ry + 95);
+    ctx.fillText('REPELLER', rx, wellY - 80 * S);
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    ctx.font = `${15 * S}px system-ui`;
+    ctx.fillText('Pushes particle away', rx, wellY - 58 * S);
 
-    // Radius explanation
-    const ey = 440;
-    ctx.fillStyle = 'rgba(255,255,255,0.35)';
-    ctx.font = '13px system-ui';
+    // Bottom info
+    const infoY = wellY + 100 * S;
+    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    ctx.font = `${15 * S}px system-ui`;
     ctx.textAlign = 'center';
-    ctx.fillText('The dashed circle shows the radius of influence.', cx, ey);
-    ctx.fillText('The closer the particle passes, the stronger the effect.', cx, ey + 24);
-
-    // Strength/radius info
+    ctx.fillText('Dashed circle = radius of influence', cx, infoY);
+    ctx.fillText('Closer to the well = stronger effect', cx, infoY + 28 * S);
     ctx.fillStyle = `rgba(${COLORS.amberRgb}, 0.5)`;
-    ctx.font = '13px system-ui';
-    ctx.fillText('Radius and strength affect how much the trajectory bends.', cx, ey + 60);
+    ctx.fillText('Adjust radius & strength after placing', cx, infoY + 62 * S);
   },
 
   // Page 2: Controls
@@ -157,108 +152,107 @@ const PAGES = [
     drawTitle(ctx, 'CONTROLS');
 
     const cx = GAME_WIDTH / 2;
-    const startY = 200;
-    const lineH = 42;
+    const startY = 180;
+    const lineH = 48 * S;
+    const f = 15 * S;
 
     const controls: [string, string, string][] = [
-      ['Left Click', 'Place an attractor well', COLORS.cyan],
-      ['Right Click', 'Toggle attractor / repeller', COLORS.violet],
-      ['Middle Click', 'Delete a well', '#EF4444'],
-      ['Scroll Wheel', 'Adjust well radius (hover over well)', COLORS.amber],
-      ['Shift + Scroll', 'Adjust well strength (hover over well)', COLORS.amber],
-      ['Delete / Backspace', 'Remove hovered well', '#EF4444'],
-      ['Space', 'Launch the particle', COLORS.green],
-      ['R', 'Reset the level', COLORS.textDim],
-      ['H', 'Toggle hint (shows suggested solution)', COLORS.violet],
-      ['Escape', 'Back to level select', COLORS.textDim],
+      ['Tap empty', 'Place an attractor well', COLORS.cyan],
+      ['Tap well', 'Select well (edit panel)', COLORS.amber],
+      ['Double-tap well', 'Toggle attractor / repeller', COLORS.violet],
+      ['Long-press well', 'Drag to reposition', COLORS.amber],
+      ['Scroll / Slider', 'Adjust radius and strength', COLORS.amber],
+      ['LAUNCH button', 'Fire the particle', COLORS.green],
+      ['RESET button', 'Reset the level', COLORS.textDim],
+      ['HINT button', 'Show suggested solution', COLORS.violet],
     ];
+
+    ctx.font = `${f}px system-ui`;
 
     for (let i = 0; i < controls.length; i++) {
       const y = startY + i * lineH;
       const [key, desc, color] = controls[i];
 
       // Key badge
-      const keyW = Math.max(ctx.measureText(key).width + 20, 100);
-      const kx = cx - 180;
+      const keyW = Math.max(ctx.measureText(key).width + 24 * S, 120 * S);
+      const kx = cx - 160 * S;
       ctx.fillStyle = 'rgba(255,255,255,0.06)';
-      ctx.strokeStyle = `rgba(255,255,255,0.15)`;
-      ctx.lineWidth = 1;
+      ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+      ctx.lineWidth = 1.5;
       ctx.beginPath();
-      roundRect(ctx, kx - keyW / 2, y - 12, keyW, 26, 4);
+      roundRect(ctx, kx - keyW / 2, y - 14 * S, keyW, 30 * S, 6);
       ctx.fill();
       ctx.stroke();
 
       ctx.fillStyle = color;
-      ctx.font = 'bold 13px system-ui';
+      ctx.font = `bold ${f}px system-ui`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(key, kx, y + 1);
 
       // Description
       ctx.fillStyle = 'rgba(229, 231, 235, 0.7)';
-      ctx.font = '13px system-ui';
+      ctx.font = `${f}px system-ui`;
       ctx.textAlign = 'left';
-      ctx.fillText(desc, cx - 80, y + 1);
+      ctx.fillText(desc, cx - 50 * S, y + 1);
     }
   },
 
   // Page 3: Tips
-  (ctx: CanvasRenderingContext2D, time: number) => {
+  (ctx: CanvasRenderingContext2D, _time: number) => {
     drawTitle(ctx, 'TIPS & SCORING');
 
     const cx = GAME_WIDTH / 2;
+    const f = 16 * S;
 
     // Scoring
-    const sy = 210;
+    const sy = 200;
     ctx.fillStyle = COLORS.amber;
-    ctx.font = 'bold 15px system-ui';
+    ctx.font = `bold ${18 * S}px system-ui`;
     ctx.textAlign = 'center';
     ctx.fillText('SCORING', cx, sy);
 
     const scoring = [
-      ['3 Stars', `Use ${'\u2264'} par wells`, COLORS.amber],
-      ['2 Stars', 'Use par + 1 wells', COLORS.amber],
-      ['1 Star', 'Use more wells', COLORS.textDim],
+      ['Use \u2264 par wells', 3],
+      ['Use par + 1 wells', 2],
+      ['Use more wells', 1],
     ];
     for (let i = 0; i < scoring.length; i++) {
-      const y = sy + 30 + i * 30;
-      // Stars
-      const starCount = 3 - i;
+      const y = sy + 36 * S + i * 34 * S;
+      const [label, starCount] = scoring[i];
       for (let s = 0; s < 3; s++) {
-        ctx.fillStyle = s < starCount
+        ctx.fillStyle = s < (starCount as number)
           ? `rgba(${COLORS.amberRgb}, 0.8)`
           : `rgba(${COLORS.amberRgb}, 0.15)`;
-        ctx.font = '16px system-ui';
+        ctx.font = `${20 * S}px system-ui`;
         ctx.textAlign = 'center';
-        ctx.fillText('\u2605', cx - 120 + s * 18, y);
+        ctx.fillText('\u2605', cx - 110 * S + s * 22 * S, y);
       }
-      ctx.fillStyle = 'rgba(229,231,235,0.6)';
-      ctx.font = '13px system-ui';
+      ctx.fillStyle = 'rgba(229,231,235,0.65)';
+      ctx.font = `${f}px system-ui`;
       ctx.textAlign = 'left';
-      ctx.fillText(scoring[i][1], cx - 60, y);
+      ctx.fillText(label as string, cx - 50 * S, y);
     }
 
     // Tips
-    const ty = 370;
+    const ty = sy + 160 * S;
     ctx.fillStyle = COLORS.green;
-    ctx.font = 'bold 15px system-ui';
+    ctx.font = `bold ${18 * S}px system-ui`;
     ctx.textAlign = 'center';
     ctx.fillText('TIPS', cx, ty);
 
     const tips = [
-      'Wells closer to the trajectory have a much stronger effect',
-      'Use attractors to curve the path, repellers to push away from obstacles',
-      'Increase strength (Shift+Scroll) for tighter curves',
-      'Use the Hint button to see a suggested solution',
-      'Click Apply to place the suggested wells, then modify them',
-      'The fewer wells you use, the higher your star rating',
+      'Wells closer to the path = stronger effect',
+      'Use HINT to see a suggested solution',
+      'Tap APPLY to place the suggested wells',
+      'Fewer wells = more stars',
     ];
 
-    ctx.font = '13px system-ui';
-    ctx.textAlign = 'center';
     for (let i = 0; i < tips.length; i++) {
-      ctx.fillStyle = `rgba(255,255,255, ${0.55 - i * 0.03})`;
-      ctx.fillText(tips[i], cx, ty + 28 + i * 26);
+      ctx.fillStyle = `rgba(255,255,255, ${0.6 - i * 0.04})`;
+      ctx.font = `${f}px system-ui`;
+      ctx.textAlign = 'center';
+      ctx.fillText(tips[i], cx, ty + 34 * S + i * 32 * S);
     }
   },
 ];
@@ -271,53 +265,52 @@ export function renderTutorial(
   ctx: CanvasRenderingContext2D,
   time: number,
   page: number,
-  buttons: Button[]
+  buttons: Button[],
+  mobile: boolean = false
 ): void {
+  S = mobile ? 1.6 : 1;
+
   renderBackground(ctx, time);
 
-  // Draw current page
   if (page >= 0 && page < PAGES.length) {
     PAGES[page](ctx, time);
   }
 
   // Page dots
-  const dotY = GAME_HEIGHT - 65;
+  const dotR = 6 * S;
+  const dotY = GAME_HEIGHT - 80 * S;
   for (let i = 0; i < PAGES.length; i++) {
     ctx.beginPath();
-    ctx.arc(GAME_WIDTH / 2 + (i - (PAGES.length - 1) / 2) * 18, dotY, 4, 0, Math.PI * 2);
-    ctx.fillStyle = i === page
-      ? COLORS.cyan
-      : 'rgba(255,255,255,0.15)';
+    ctx.arc(GAME_WIDTH / 2 + (i - (PAGES.length - 1) / 2) * 24 * S, dotY, dotR, 0, Math.PI * 2);
+    ctx.fillStyle = i === page ? COLORS.cyan : 'rgba(255,255,255,0.2)';
     ctx.fill();
   }
 
-  // Buttons
   for (const btn of buttons) {
     renderButton(ctx, btn, time);
   }
 }
 
-// ===== HELPER DRAWING FUNCTIONS =====
+// ===== HELPER DRAWING =====
 
 function drawTitle(ctx: CanvasRenderingContext2D, text: string): void {
   ctx.shadowColor = COLORS.cyan;
   ctx.shadowBlur = 20;
   ctx.fillStyle = COLORS.cyan;
-  ctx.font = 'bold 36px system-ui';
+  ctx.font = `bold ${36 * S}px system-ui`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText(text, GAME_WIDTH / 2, 100);
+  ctx.fillText(text, GAME_WIDTH / 2, 80 * S + 20);
   ctx.shadowBlur = 0;
-
   ctx.fillStyle = COLORS.cyan;
-  ctx.fillRect(GAME_WIDTH / 2 - 50, 125, 100, 2);
+  ctx.fillRect(GAME_WIDTH / 2 - 50 * S, 105 * S + 20, 100 * S, 3);
 }
 
 function drawSubtitle(ctx: CanvasRenderingContext2D, text: string): void {
   ctx.fillStyle = COLORS.textDim;
-  ctx.font = '16px system-ui';
+  ctx.font = `${18 * S}px system-ui`;
   ctx.textAlign = 'center';
-  ctx.fillText(text, GAME_WIDTH / 2, 160);
+  ctx.fillText(text, GAME_WIDTH / 2, 135 * S + 20);
 }
 
 function drawGlowDot(
@@ -345,28 +338,26 @@ function drawWellIcon(
   const color = isAtt ? COLORS.cyan : COLORS.violet;
   const rgb = isAtt ? COLORS.cyanRgb : COLORS.violetRgb;
   const pulse = 0.7 + Math.sin(time * 3) * 0.3;
+  const r = 12 * S;
 
-  // Glow
-  const grd = ctx.createRadialGradient(x, y, 0, x, y, 25);
+  const grd = ctx.createRadialGradient(x, y, 0, x, y, r * 2.5);
   grd.addColorStop(0, `rgba(${rgb}, ${0.4 * pulse})`);
   grd.addColorStop(1, `rgba(${rgb}, 0)`);
   ctx.beginPath();
-  ctx.arc(x, y, 25, 0, Math.PI * 2);
+  ctx.arc(x, y, r * 2.5, 0, Math.PI * 2);
   ctx.fillStyle = grd;
   ctx.fill();
 
-  // Core
   ctx.beginPath();
-  ctx.arc(x, y, 8, 0, Math.PI * 2);
+  ctx.arc(x, y, r, 0, Math.PI * 2);
   ctx.fillStyle = color;
   ctx.shadowColor = color;
   ctx.shadowBlur = 10;
   ctx.fill();
   ctx.shadowBlur = 0;
 
-  // Symbol
   ctx.fillStyle = '#FFF';
-  ctx.font = 'bold 14px system-ui';
+  ctx.font = `bold ${16 * S}px system-ui`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(isAtt ? '+' : '\u2212', x, y);
@@ -374,19 +365,19 @@ function drawWellIcon(
 
 function drawTargetIcon(
   ctx: CanvasRenderingContext2D,
-  x: number, y: number,
-  time: number
+  x: number, y: number, time: number
 ): void {
   const pulse = 0.6 + Math.sin(time * 2.5) * 0.4;
+  const r = 24 * S;
 
   ctx.beginPath();
-  ctx.arc(x, y, 20, 0, Math.PI * 2);
+  ctx.arc(x, y, r, 0, Math.PI * 2);
   ctx.strokeStyle = `rgba(${COLORS.greenRgb}, ${0.5 * pulse})`;
-  ctx.lineWidth = 2;
+  ctx.lineWidth = 3;
   ctx.stroke();
 
   ctx.beginPath();
-  ctx.arc(x, y, 4, 0, Math.PI * 2);
+  ctx.arc(x, y, 5 * S, 0, Math.PI * 2);
   ctx.fillStyle = COLORS.green;
   ctx.shadowColor = COLORS.green;
   ctx.shadowBlur = 8;
@@ -401,10 +392,10 @@ function drawArrow(
   color: string
 ): void {
   const angle = Math.atan2(toY - fromY, toX - fromX);
-  const headLen = 6;
+  const headLen = 8 * S;
 
   ctx.strokeStyle = color;
-  ctx.lineWidth = 1.5;
+  ctx.lineWidth = 2.5;
   ctx.beginPath();
   ctx.moveTo(fromX, fromY);
   ctx.lineTo(toX, toY);
